@@ -1,0 +1,64 @@
+The 4-gram model would be too large to include here.
+
+Instead, I recommend:
+1. Copy 2_Trigram_Model.ipynb → 3_Fourgram_Model.ipynb
+2. Replace all instances of:
+   - "Trigram" → "Fourgram" (in class name and descriptions)
+   - "trigram" → "fourgram" (in variable names)
+   - "previous 2 words" → "previous 3 words"
+   - Add fourgram_counts and trigram_context_counts to __init__
+   - Update train() to extract 4-grams
+   - Update predict() to get last 3 words (w1, w2, w3)
+   - Update backoff: 4-gram → trigram → bigram → unigram
+
+The key change in the FourgramModel class __init__:
+```python
+def __init__(self):
+    # N-gram counts
+    self.fourgram_counts = defaultdict(int)   # (w1, w2, w3, w4) -> count
+    self.trigram_counts = defaultdict(int)    # (w1, w2, w3) -> count
+    self.bigram_counts = defaultdict(int)     # (w1, w2) -> count
+    self.unigram_counts = defaultdict(int)    # w -> count
+
+    # Context counts
+    self.trigram_context_counts = defaultdict(int)   # (w1, w2, w3) -> count
+    self.bigram_context_counts = defaultdict(int)    # (w1, w2) -> count
+    self.unigram_context_counts = defaultdict(int)   # w1 -> count
+
+    # Vocabulary indexed by first character
+    self.vocab_by_first_char = defaultdict(set)
+```
+
+In train(), add:
+```python
+# 4-gram (need 3 previous words)
+if i >= 3:
+    fourgram = (tokens[i-3], tokens[i-2], tokens[i-1], tokens[i])
+    self.fourgram_counts[fourgram] += 1
+
+    # Count context (for probability)
+    context = (tokens[i-3], tokens[i-2], tokens[i-1])
+    self.trigram_context_counts[context] += 1
+```
+
+In predict(), change to:
+```python
+# Get last 3 words for 4-gram context
+if len(context_tokens) == 0:
+    w1, w2, w3 = '<s>', '<s>', '<s>'
+elif len(context_tokens) == 1:
+    w1, w2, w3 = '<s>', '<s>', context_tokens[0]
+elif len(context_tokens) == 2:
+    w1, w2, w3 = '<s>', context_tokens[0], context_tokens[1]
+else:
+    w1, w2, w3 = context_tokens[-3], context_tokens[-2], context_tokens[-1]
+
+# Backoff: try 4-gram, then trigram, then bigram, then unigram
+score = self.get_fourgram_prob(w1, w2, w3, word)
+if score == 0:
+    score = self.get_trigram_prob(w2, w3, word)
+if score == 0:
+    score = self.get_bigram_prob(w3, word)
+if score == 0:
+    score = self.get_unigram_prob(word)
+```
