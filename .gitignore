@@ -4,3 +4,4 @@
 *.tok
 *.claude
 *.md
+!README.md
